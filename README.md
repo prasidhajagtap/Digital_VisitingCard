@@ -9,10 +9,14 @@ Everything is in one file: `index.html`.
 
 ## Where the details come from
 
-| Where the page runs | Details shown |
-|---|---|
-| Poornata portal (`*.poornata.com`), after Azure login | The logged-in user's details, read from the portal page's hidden fields |
-| Anywhere else (GitHub Pages, local preview) | The demo card in `VC_CONFIG.demoCard` |
+SharePoint only. The card shows the logged-in user's details (Azure login), read from the portal page's hidden fields.
+There is no demo data: outside a portal page the card shows "Could not read your login details…".
+
+## Download for SharePoint
+
+Latest file (this branch):
+https://raw.githubusercontent.com/prasidhajagtap/Digital_VisitingCard/claude/eloquent-babbage-nd6nh0/index.html
+(open the link, then Save As `index.html`; or on GitHub open `index.html` → "Download raw file").
 
 Portal hidden fields used (found by class first, e.g. `class="hdnBuUnitDesc"`, then by id/name ending):
 
@@ -47,13 +51,9 @@ In `VC_CONFIG.masterData.url`, set the address of the master data service, for e
 `https://…/employee/{id}` — `{id}` is replaced with the Poornata ID. It must return JSON:
 `{ "designation": "...", "phone": "..." }`. Nothing else needs to change.
 
-## Change the demo details
-
-Edit `VC_CONFIG.demoCard` in `index.html`.
-Tip: use plain English letters where possible. Some phones show special symbols wrongly when saving a contact from a QR code.
 
 ## Notes
 
 - Design: brand red `#CB2129` gradient with gold accents, gentle animations (off when the device asks for reduced motion).
 - QR codes are made in the browser with qrcode-generator 1.4.4 by Kazuhiko Arase (MIT License), embedded in the page.
-- GitHub Pages: Settings → Pages → Deploy from a branch → `main`, folder `/ (root)`.
+- GitHub Pages cannot show a real card (it has no portal login); use SharePoint for testing.

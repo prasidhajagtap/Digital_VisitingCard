@@ -236,14 +236,10 @@ body {
 /*
  * Settings. The logo (white, transparent background) is embedded in the <img id="logo"> tag.
  *
- * On the Poornata portal (UAT / production) the card is filled from the logged-in
- * user's details that the portal page holds in hidden fields after Azure login.
- * Anywhere else (e.g. GitHub Pages, local preview) the demo card below is shown.
+ * SharePoint only: the card is filled from the logged-in user's details that the
+ * portal page holds in hidden fields after Azure login. There is no demo data.
  */
 window.VC_CONFIG = {
-  // Sites where the card reads the logged-in user from the portal page.
-  portalHosts: [/(^|\.)poornata\.com$/i],
-
   // Hidden fields on the portal page (looked up by class, then by id/name ending).
   portalFields: {
     name:       "hdnName",
@@ -260,17 +256,7 @@ window.VC_CONFIG = {
   // Master data for Designation and Contact number — NOT CONNECTED YET.
   // Later: set url, e.g. "https://.../employee/{id}" returning JSON { "designation": "...", "phone": "..." }.
   // While empty, the card simply hides designation and phone.
-  masterData: { url: "" },
-
-  // Shown outside the portal (GitHub Pages, local preview).
-  demoCard: {
-    name: "Prasidha Jagtap",
-    designation: "Manager - Business Development",
-    business: "Sample Industries Pvt. Ltd.",
-    phone: "+91 98765 43210",
-    email: "prasidha.jagtap@example.com",
-    address: "4th Floor, Example Towers, MG Road, Pune, Maharashtra 411001"
-  }
+  masterData: { url: "" }
 };
   </script>
   <script>
@@ -279,7 +265,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   </script>
   <script>
 /*
- * Fills the card (from the portal login, or the demo card) and shows the contact QR
+ * Fills the card from the portal login (SharePoint, Azure) and shows the contact QR
  * when the name is tapped.
  * The QR holds the contact itself (vCard), so the other phone's camera offers
  * "Add to Contacts" with no internet and no website needed.
@@ -405,11 +391,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
 
   /* ---------- Portal (Azure login) ---------- */
-  function onPortal() {
-    var host = location.hostname;
-    return (cfg.portalHosts || []).some(function (re) { return re.test(host); });
-  }
-
   // The card may run inside an iframe (Page Viewer web part) or directly on the portal page.
   function portalDoc() {
     try {
@@ -473,8 +454,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   retryBtn.addEventListener("click", startPortal);
 
   var built = false;
-  if (onPortal()) startPortal();
-  else fill(cfg.demoCard || {});
+  startPortal();
 
   // QR dialog
   var dialog = document.getElementById("qr");
