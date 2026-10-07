@@ -34,7 +34,7 @@ body {
 }
 
 .stage { width: min(100%, 560px); display: grid; gap: 14px; justify-items: center; }
-.hint { margin: 0; color: var(--hint); font-size: 0.85rem; }
+.hint { margin: 0; color: var(--hint); font-size: 0.85rem; text-align: center; }
 
 /* Card: 3.5 x 2 inch ratio. Text scales with card width (cqw units). */
 .vcard {
@@ -111,6 +111,19 @@ body {
 .vc-row { display: flex; align-items: flex-start; gap: 2cqw; font-size: 3cqw; line-height: 1.35; overflow-wrap: anywhere; }
 .vc-row svg { flex: none; width: 3.4cqw; height: 3.4cqw; margin-top: .2cqw; fill: var(--gold); }
 
+/* Loading (waiting for portal login details) */
+.vcard.is-loading .vc-head > div,
+.vcard.is-loading .vc-business,
+.vcard.is-loading .vc-details { animation: vc-pulse 1s ease-in-out infinite alternate; }
+.vcard.is-loading .vc-name { cursor: default; border-bottom-color: transparent; }
+@keyframes vc-pulse { from { opacity: .35; } to { opacity: .8; } }
+[hidden] { display: none !important; }
+.retry {
+  min-height: 40px; padding: 8px 18px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--red-2); background: transparent; color: var(--red-2);
+  font: inherit; font-weight: 600;
+}
+
 /* QR overlay */
 .qr {
   position: fixed; inset: 0;
@@ -171,7 +184,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .vcard, .vcard::before, .vc-body::after,
   .qr[open], .qr[open] .qr-panel, .qr[open] #qr-code, .qr[open] #qr-code::after,
-  .qr.closing, .qr.closing .qr-panel { animation: none !important; }
+  .qr.closing, .qr.closing .qr-panel,
+  .vcard.is-loading .vc-head > div, .vcard.is-loading .vc-business,
+  .vcard.is-loading .vc-details { animation: none !important; }
   .vcard::before, .qr[open] #qr-code::after { display: none; }
 }
   </style>
@@ -189,22 +204,23 @@ body {
         </header>
         <p class="vc-business" id="business"></p>
         <ul class="vc-details">
-          <li class="vc-row">
+          <li class="vc-row" id="row-phone">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.6a1 1 0 0 1-.25 1z"/></svg>
             <span id="phone"></span>
           </li>
-          <li class="vc-row">
+          <li class="vc-row" id="row-email">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm8 7.2L20 6H4l8 5.2zM4 8.3V18h16V8.3l-8 5.2-8-5.2z"/></svg>
             <span id="email"></span>
           </li>
-          <li class="vc-row">
+          <li class="vc-row" id="row-address">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
             <span id="address"></span>
           </li>
         </ul>
       </div>
     </article>
-    <p class="hint">Tap the name to show the QR code</p>
+    <p class="hint" id="status" role="status" aria-live="polite">Tap the name to show the QR code</p>
+    <button class="retry" id="retry" type="button" hidden>Try again</button>
   </main>
 
   <dialog class="qr" id="qr" aria-labelledby="qr-title">
@@ -218,12 +234,36 @@ body {
 
   <script>
 /*
- * Card details. Edit only this block to change what the card shows
- * and what the QR code saves to the other person's phone.
- * The logo (white, transparent background) is embedded in the <img id="logo"> tag.
+ * Settings. The logo (white, transparent background) is embedded in the <img id="logo"> tag.
+ *
+ * On the Poornata portal (UAT / production) the card is filled from the logged-in
+ * user's details that the portal page holds in hidden fields after Azure login.
+ * Anywhere else (e.g. GitHub Pages, local preview) the demo card below is shown.
  */
 window.VC_CONFIG = {
-  card: {
+  // Sites where the card reads the logged-in user from the portal page.
+  portalHosts: [/(^|\.)poornata\.com$/i],
+
+  // Hidden fields on the portal page (looked up by class, then by id/name ending).
+  portalFields: {
+    name:       "hdnName",
+    email:      "hdnCurrentUserEmail",
+    business:   "hdnBusinessDesc",
+    address:    "hdnBuUnitDesc",
+    poornataId: "hdnPoornataId"   // not shown; only used to look up master data
+  },
+
+  // The portal may fill hidden fields a little after page load: check every 400 ms, up to 6 s.
+  pollMs: 400,
+  pollMaxTries: 15,
+
+  // Master data for Designation and Contact number — NOT CONNECTED YET.
+  // Later: set url, e.g. "https://.../employee/{id}" returning JSON { "designation": "...", "phone": "..." }.
+  // While empty, the card simply hides designation and phone.
+  masterData: { url: "" },
+
+  // Shown outside the portal (GitHub Pages, local preview).
+  demoCard: {
     name: "Prasidha Jagtap",
     designation: "Manager - Business Development",
     business: "Sample Industries Pvt. Ltd.",
@@ -239,7 +279,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   </script>
   <script>
 /*
- * Fills the card from VC_CONFIG above and shows the contact QR when the name is tapped.
+ * Fills the card (from the portal login, or the demo card) and shows the contact QR
+ * when the name is tapped.
  * The QR holds the contact itself (vCard), so the other phone's camera offers
  * "Add to Contacts" with no internet and no website needed.
  */
@@ -247,7 +288,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   "use strict";
 
   var cfg = window.VC_CONFIG || {};
-  var card = cfg.card || {};
+  var card = {};
 
   function setText(id, value) {
     document.getElementById(id).textContent = value || ""; // textContent: never inject HTML
@@ -287,21 +328,160 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     return qr.createSvgTag({ cellSize: 6, margin: 3, scalable: true });
   }
 
-  // Fill the card
-  setText("name", card.name);
-  setText("designation", card.designation);
-  setText("business", card.business);
-  setText("phone", card.phone);
-  setText("email", card.email);
-  setText("address", card.address);
-  document.title = (card.name ? card.name + " – " : "") + "Visiting Card";
+  /* ---------- Clean values before showing them (text only, sensible length) ---------- */
+  function clean(v, max) {
+    return String(v || "").replace(/[\u0000-\u001f\u007f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max || 120);
+  }
+  function cleanName(v) {
+    v = clean(v, 60);
+    return /^[A-Za-z][A-Za-z .'-]{1,59}$/.test(v) ? v : "";
+  }
+  function cleanEmail(v) {
+    v = clean(v, 120);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? v : "";
+  }
+  function cleanPhone(v) {
+    v = clean(v, 20);
+    return /^\+?[\d\s-]{6,20}$/.test(v) ? v : "";
+  }
+  /* "prasidha.jagtap@company.com" → "Prasidha Jagtap" (used only if the name field is empty) */
+  function nameFromEmail(email) {
+    var prefix = String(email || "").split("@")[0];
+    if (!prefix || /^\d+$/.test(prefix)) return "";
+    return prefix.replace(/[._-]+/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+  }
+
+  /* ---------- Fill the card ---------- */
+  var cardEl = document.getElementById("card");
+  var nameBtn = document.getElementById("name");
+  var statusEl = document.getElementById("status");
+  var retryBtn = document.getElementById("retry");
+
+  function fill(d) {
+    card = d;
+    setText("name", d.name);
+    setText("designation", d.designation);
+    setText("business", d.business);
+    setText("phone", d.phone);
+    setText("email", d.email);
+    setText("address", d.address);
+    // Hide anything we don't have (e.g. designation/phone until master data is connected)
+    document.getElementById("designation").hidden = !d.designation;
+    document.getElementById("business").hidden = !d.business;
+    document.getElementById("row-phone").hidden = !d.phone;
+    document.getElementById("row-email").hidden = !d.email;
+    document.getElementById("row-address").hidden = !d.address;
+    document.title = (d.name ? d.name + " – " : "") + "Visiting Card";
+    built = false;
+    cardEl.classList.remove("is-loading");
+    nameBtn.disabled = false;
+    statusEl.textContent = "Tap the name to show the QR code";
+    retryBtn.hidden = true;
+  }
+
+  // Hide the detail lines while there is nothing to show (loading / error)
+  function hideDetails() {
+    ["designation", "business", "row-phone", "row-email", "row-address"].forEach(function (id) {
+      document.getElementById(id).hidden = true;
+    });
+  }
+
+  function showLoading() {
+    hideDetails();
+    cardEl.classList.add("is-loading");
+    nameBtn.disabled = true;
+    setText("name", "Loading…");
+    retryBtn.hidden = true;
+    statusEl.textContent = "Reading your login details…";
+  }
+
+  function showError(msg) {
+    hideDetails();
+    cardEl.classList.remove("is-loading");
+    nameBtn.disabled = true;
+    setText("name", "—");
+    statusEl.textContent = msg;
+    retryBtn.hidden = false;
+  }
+
+  /* ---------- Portal (Azure login) ---------- */
+  function onPortal() {
+    var host = location.hostname;
+    return (cfg.portalHosts || []).some(function (re) { return re.test(host); });
+  }
+
+  // The card may run inside an iframe (Page Viewer web part) or directly on the portal page.
+  function portalDoc() {
+    try {
+      if (window.parent && window.parent !== window && window.parent.document) return window.parent.document;
+    } catch (e) { /* different site: cannot read parent */ }
+    return document;
+  }
+
+  // Find a hidden field by class (e.g. class="hdnBuUnitDesc"), then by id/name ending.
+  function field(doc, key) {
+    var el = doc.querySelector("input." + key) ||
+             doc.querySelector('input[id$="' + key + '"]') ||
+             doc.querySelector('input[name$="' + key + '"]');
+    return el ? el.value : "";
+  }
+
+  function readPortal() {
+    var doc = portalDoc(), f = cfg.portalFields || {};
+    var email = cleanEmail(field(doc, f.email));
+    return {
+      name: cleanName(field(doc, f.name)) || cleanName(nameFromEmail(email)),
+      email: email,
+      business: clean(field(doc, f.business), 120),
+      address: clean(field(doc, f.address), 160),
+      poornataId: (/^\d{3,12}$/.test(field(doc, f.poornataId).trim()) ? field(doc, f.poornataId).trim() : ""),
+      designation: "",
+      phone: ""
+    };
+  }
+
+  /* Master data (Designation, Contact number). Returns {} until cfg.masterData.url is set. */
+  function loadMasterData(poornataId) {
+    var url = cfg.masterData && cfg.masterData.url;
+    if (!url || !poornataId || !window.fetch) return Promise.resolve({});
+    return fetch(url.replace("{id}", encodeURIComponent(poornataId)), { credentials: "include" })
+      .then(function (r) { return r.ok ? r.json() : {}; })
+      .catch(function () { return {}; });
+  }
+
+  function startPortal() {
+    showLoading();
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries++;
+      var d = readPortal();
+      if (d.name && (d.email || d.poornataId)) {
+        clearInterval(timer);
+        loadMasterData(d.poornataId).then(function (m) {
+          d.designation = clean(m && m.designation, 80);
+          d.phone = cleanPhone(m && m.phone);
+          delete d.poornataId; // not shown, not put in the QR
+          fill(d);
+        });
+      } else if (tries >= (cfg.pollMaxTries || 15)) {
+        clearInterval(timer);
+        showError("Could not read your login details. Please sign in to the portal and try again.");
+      }
+    }, cfg.pollMs || 400);
+  }
+
+  retryBtn.addEventListener("click", startPortal);
+
+  var built = false;
+  if (onPortal()) startPortal();
+  else fill(cfg.demoCard || {});
 
   // QR dialog
   var dialog = document.getElementById("qr");
   var qrBox = document.getElementById("qr-code");
-  var built = false;
 
   function openQr() {
+    if (nameBtn.disabled || !card.name) return;
     if (!built) {
       qrBox.innerHTML = qrSvg(toVCard(card)); // SVG made by the QR library, not from user text
       qrBox.firstChild.setAttribute("role", "img");
