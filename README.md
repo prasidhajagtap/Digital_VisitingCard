@@ -3,7 +3,7 @@
 Everything is in one file: `index.html`.
 
 - Opening the page shows the card.
-- Tapping the **name** shows a QR code.
+- Tapping the **name** turns the card over (smooth flip) to show the QR code on its back. Tapping the card turns it back.
 - The other person points their phone camera at it and taps **Add to Contacts**.
   The contact is stored inside the QR code (vCard), so no app, login or internet is needed on their side.
 
