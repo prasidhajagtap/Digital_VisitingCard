@@ -131,18 +131,16 @@ html.vc-open, html.vc-open body { overflow: hidden !important; }
 .vc-title { -webkit-line-clamp: 1; line-clamp: 1; }
 .vc-title[hidden] { display: none !important; }
 /* Business and Unit side by side: bigger text still fits, no empty gap under the name */
-.vc-info { position: relative; z-index: 1; display: grid; grid-template-columns: 1.4fr 1fr; column-gap: 4cqw; row-gap: 2.6cqw; align-items: start; }
-.vc-field { display: grid; gap: .9cqw; justify-items: start; min-width: 0; }
+.vc-info { position: relative; z-index: 1; display: grid; grid-template-columns: 1.4fr 1fr; column-gap: 4.5cqw; row-gap: 2.6cqw; align-items: stretch; }
+/* Simple separator: a thin soft line between Business and Unit (only when both are shown) */
+#field-business:not([hidden]) + #row-address { border-left: .3cqw solid rgba(255,255,255,.35); padding-left: 4.5cqw; }
+.vc-field { display: grid; gap: .9cqw; justify-items: start; align-content: start; min-width: 0; }
 .vc-label {
   font-size: calc(2.8cqw * var(--fit, 1)) !important; font-weight: 700; letter-spacing: .12em !important;
   text-transform: uppercase !important; color: var(--gold);
 }
 .vc-business {
-  padding: .8cqw 2.6cqw;
-  border-radius: 99px;
-  border: .25cqw solid rgba(242,184,75,.7);
-  background: rgba(0,0,0,.18);
-  font-size: calc(4cqw * var(--fit, 1)) !important; font-weight: 600; line-height: 1.25 !important;
+  font-size: calc(4.3cqw * var(--fit, 1)) !important; font-weight: 600; line-height: 1.25 !important;
   overflow-wrap: anywhere;
 }
 .vc-value { font-size: calc(4.3cqw * var(--fit, 1)) !important; font-weight: 600; line-height: 1.25 !important; overflow-wrap: anywhere; }
