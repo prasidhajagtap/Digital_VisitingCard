@@ -45,8 +45,30 @@ body {
   border-radius: 16px;
   overflow: hidden;
   color: #fff;
-  background: linear-gradient(135deg, var(--red-1) 0%, var(--red-2) 40%, var(--red-3) 100%);
+  /* Wider-than-card gradient that slowly drifts (see @keyframes vc-drift) */
+  background: linear-gradient(135deg, var(--red-1) 0%, var(--red-2) 30%, var(--red-3) 55%, var(--red-2) 80%, var(--red-1) 100%);
+  background-size: 250% 250%;
+  animation: vc-drift 14s ease-in-out infinite alternate;
   box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 12px 32px rgba(0,0,0,.18);
+}
+/* Soft light band that sweeps across the card every few seconds */
+.vcard::before {
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.16) 48%, rgba(255,255,255,.04) 56%, transparent 66%);
+  transform: translateX(-120%);
+  animation: vc-shine 7s ease-in-out 1.2s infinite;
+}
+@keyframes vc-drift {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+@keyframes vc-shine {
+  0%, 70% { transform: translateX(-120%); }
+  100%    { transform: translateX(120%); }
+}
+@keyframes vc-float {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-3cqw, 2cqw) scale(1.06); }
 }
 .vc-body {
   position: relative;
@@ -59,6 +81,7 @@ body {
   content: ""; position: absolute; right: -14cqw; top: -18cqw;
   width: 52cqw; height: 52cqw; border-radius: 50%;
   background: rgba(255,255,255,.10); pointer-events: none;
+  animation: vc-float 9s ease-in-out infinite alternate;
 }
 .vc-head { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; gap: 3.5cqw; }
 .vc-logo { flex: none; height: 16cqw; width: auto; margin-top: -1cqw; }
@@ -115,6 +138,42 @@ body {
   font: inherit; font-weight: 600; cursor: pointer;
 }
 .qr-close:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+/* QR open: dark layer fades in, panel pops up, QR fades in, a red line scans down once */
+.qr[open] { animation: qr-dim .22s ease-out both; }
+.qr[open] .qr-panel { animation: qr-pop .42s cubic-bezier(.2,.9,.3,1.2) both; }
+.qr[open] #qr-code { position: relative; overflow: hidden; animation: qr-in .35s ease-out .15s both; }
+.qr[open] #qr-code::after {
+  content: ""; position: absolute; left: 4%; right: 4%; top: 0; height: 3px; border-radius: 3px;
+  background: var(--red-2); box-shadow: 0 0 12px 2px rgba(203,33,41,.55);
+  animation: qr-scan .9s ease-in-out .35s both;
+}
+/* QR close: quick reverse */
+.qr.closing { animation: qr-dim .18s ease-in reverse both; }
+.qr.closing .qr-panel { animation: qr-out .18s ease-in both; }
+
+@keyframes qr-dim { from { background-color: rgba(10,10,12,0); } to { background-color: rgba(10,10,12,.72); } }
+@keyframes qr-pop {
+  0%   { opacity: 0; transform: translateY(24px) scale(.86) rotateX(18deg); }
+  15%  { opacity: 1; }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes qr-out { to { opacity: 0; transform: translateY(12px) scale(.94); } }
+@keyframes qr-in { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes qr-scan {
+  0%   { top: 0; opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { top: calc(100% - 3px); opacity: 0; }
+}
+
+/* Respect "reduce motion" phone/computer setting */
+@media (prefers-reduced-motion: reduce) {
+  .vcard, .vcard::before, .vc-body::after,
+  .qr[open], .qr[open] .qr-panel, .qr[open] #qr-code, .qr[open] #qr-code::after,
+  .qr.closing, .qr.closing .qr-panel { animation: none !important; }
+  .vcard::before, .qr[open] #qr-code::after { display: none; }
+}
   </style>
 </head>
 <body>
@@ -249,12 +308,27 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       qrBox.firstChild.setAttribute("aria-label", "QR code with contact details of " + (card.name || ""));
       built = true;
     }
+    dialog.classList.remove("closing");
     if (dialog.showModal) dialog.showModal(); else dialog.setAttribute("open", "");
   }
 
-  function closeQr() {
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function finishClose() {
+    dialog.classList.remove("closing");
     if (dialog.close) dialog.close(); else dialog.removeAttribute("open");
   }
+
+  // Play the short close animation, then really close
+  function closeQr() {
+    if (!dialog.open || dialog.classList.contains("closing")) return;
+    if (reduceMotion) return finishClose();
+    dialog.classList.add("closing");
+    setTimeout(finishClose, 180);
+  }
+
+  // Esc key: use the animated close too
+  dialog.addEventListener("cancel", function (e) { e.preventDefault(); closeQr(); });
 
   document.getElementById("name").addEventListener("click", openQr);
   document.getElementById("qr-close").addEventListener("click", closeQr);
