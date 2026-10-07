@@ -41,7 +41,10 @@
 .vc-app, .vc-app *, .vc-app *::before, .vc-app *::after { box-sizing: border-box !important; }
 .vc-app, .vc-app * {
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif !important;
-  letter-spacing: normal;
+  /* The portal page sets its own letter and line spacing; lock ours so the card reads the same everywhere */
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+  line-height: 1.25 !important;
   text-transform: none;
   text-shadow: none;
 }
@@ -112,18 +115,26 @@ html.vc-open, html.vc-open body { overflow: hidden !important; }
   all: unset;
   cursor: pointer;
   display: block;
-  font-size: calc(7.8cqw * var(--fit, 1)); line-height: 1.08; font-weight: 700; letter-spacing: -0.015em;
+  font-size: calc(8.4cqw * var(--fit, 1)) !important; line-height: 1.08 !important; font-weight: 700; letter-spacing: -0.015em !important;
   border-bottom: .3cqw dashed rgba(255,255,255,.5);
 }
 .vc-name:hover { border-bottom-color: #fff; }
 .vc-name:focus-visible { outline: .5cqw solid var(--gold); outline-offset: 1cqw; border-radius: 1cqw; }
-.vc-title { margin: 1cqw 0 0; font-size: calc(3.3cqw * var(--fit, 1)); font-weight: 500; color: rgba(255,255,255,.9); }
+.vc-title { margin: 1cqw 0 0; font-size: calc(3.8cqw * var(--fit, 1)) !important; font-weight: 500; color: rgba(255,255,255,.9); }
 
 /* Business and Unit, each with a small gold title above */
-.vc-info { position: relative; z-index: 1; display: grid; gap: 2.6cqw; }
+/* Very long text: at most 2 lines (designation 1 line), ending with "…". The QR still has the full details. */
+.vc-name, .vc-clamp, .vc-value, .vc-title {
+  display: -webkit-box !important; -webkit-box-orient: vertical; overflow: hidden;
+  -webkit-line-clamp: 2; line-clamp: 2;
+}
+.vc-title { -webkit-line-clamp: 1; line-clamp: 1; }
+.vc-title[hidden] { display: none !important; }
+/* Business and Unit side by side: bigger text still fits, no empty gap under the name */
+.vc-info { position: relative; z-index: 1; display: grid; grid-template-columns: 1.4fr 1fr; column-gap: 4cqw; row-gap: 2.6cqw; align-items: start; }
 .vc-field { display: grid; gap: .9cqw; justify-items: start; min-width: 0; }
 .vc-label {
-  font-size: calc(2.3cqw * var(--fit, 1)) !important; font-weight: 700; letter-spacing: .14em !important;
+  font-size: calc(2.8cqw * var(--fit, 1)) !important; font-weight: 700; letter-spacing: .12em !important;
   text-transform: uppercase !important; color: var(--gold);
 }
 .vc-business {
@@ -131,17 +142,15 @@ html.vc-open, html.vc-open body { overflow: hidden !important; }
   border-radius: 99px;
   border: .25cqw solid rgba(242,184,75,.7);
   background: rgba(0,0,0,.18);
-  font-size: calc(3.4cqw * var(--fit, 1)) !important; font-weight: 600; line-height: 1.25 !important;
+  font-size: calc(4cqw * var(--fit, 1)) !important; font-weight: 600; line-height: 1.25 !important;
   overflow-wrap: anywhere;
 }
-.vc-value { font-size: calc(3.6cqw * var(--fit, 1)) !important; font-weight: 600; line-height: 1.25 !important; overflow-wrap: anywhere; }
-/* When designation and phone are shown too: Business and Unit side by side so all fits */
-.vcard.is-full .vc-info { grid-template-columns: 1.3fr 1fr; column-gap: 4cqw; }
+.vc-value { font-size: calc(4.3cqw * var(--fit, 1)) !important; font-weight: 600; line-height: 1.25 !important; overflow-wrap: anywhere; }
 .vc-main { position: relative; z-index: 1; display: grid; gap: 2.6cqw; }
 .vc-details { position: relative; z-index: 1; list-style: none; margin: 0; padding: 0; display: grid; gap: 1.3cqw; }
-.vc-row { display: flex; align-items: flex-start; gap: 2cqw; font-size: calc(3.2cqw * var(--fit, 1)); line-height: 1.35; overflow-wrap: anywhere; }
-.vc-row svg { flex: none; width: calc(3.4cqw * var(--fit, 1)); height: calc(3.4cqw * var(--fit, 1)); margin-top: .2cqw; fill: var(--gold); }
-.vc-row span { min-width: 0; overflow-wrap: anywhere; }
+.vc-row { display: flex; align-items: flex-start; gap: 2.2cqw; font-size: calc(3.9cqw * var(--fit, 1)) !important; line-height: 1.35 !important; overflow-wrap: anywhere; }
+.vc-row svg { flex: none; width: calc(4.2cqw * var(--fit, 1)); height: calc(4.2cqw * var(--fit, 1)); margin-top: .3cqw; fill: var(--gold); }
+.vc-row span { min-width: 0; overflow-wrap: anywhere; line-height: 1.35 !important; }
 
 /* Loading (waiting for portal login details) */
 .vcard.is-loading .vc-head > div,
@@ -244,7 +253,7 @@ html.vc-open, html.vc-open body { overflow: hidden !important; }
           <div class="vc-info">
             <div class="vc-field" id="field-business">
               <span class="vc-label">Business</span>
-              <p class="vc-business" id="business"></p>
+              <p class="vc-business"><span class="vc-clamp" id="business"></span></p>
             </div>
             <div class="vc-field" id="row-address">
               <span class="vc-label">Unit</span>
@@ -468,7 +477,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     // Hide anything we don't have (e.g. designation/phone until master data is connected)
     document.getElementById("designation").hidden = !d.designation;
     document.getElementById("field-business").hidden = !d.business;
-    cardEl.classList.toggle("is-full", !!(d.designation || d.phone));
     document.getElementById("row-phone").hidden = !d.phone;
     document.getElementById("row-email").hidden = !d.email;
     document.getElementById("row-address").hidden = !d.address;
@@ -503,13 +511,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     var fit = 1;
     cardEl.style.setProperty("--fit", "1");
-    while (fit > 0.6 && tooBig()) {
+    // Only measure when the card is really on screen with its full size (not while the page is still loading)
+    if (cardEl.getBoundingClientRect().width < 200 || body.clientHeight < 80) return;
+    while (fit > 0.7 && tooBig()) {
       fit = Math.round((fit - 0.05) * 100) / 100;
       cardEl.style.setProperty("--fit", String(fit));
     }
   }
-  // Card size changes with the screen, but the text is sized to the card; re-check once fonts are ready
+  // Re-check when fonts finish loading and whenever the card changes size (page load, rotation, app resizing)
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (card.name) fitText(); });
+  if (window.ResizeObserver) {
+    var lastW = 0;
+    new ResizeObserver(function (entries) {
+      var w = Math.round(entries[0].contentRect.width);
+      if (w !== lastW && card.name) { lastW = w; fitText(); }
+    }).observe(cardEl);
+  }
+  window.addEventListener("load", function () { if (card.name) fitText(); });
 
   function showLoading() {
     hideDetails();
